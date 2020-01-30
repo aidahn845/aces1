@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v1.6.1/mapbox-gl.js"></script>
+<script src="javascripts/helpers.js"></script>
+<script src="assets/testdata_people.js"></script>
+<script src="assets/testdata_project_geo.js"></script>
+<script src="assets/testdata_projects.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v1.6.1/mapbox-gl.css" rel="stylesheet" />
+<style>
+	body { margin: 0; padding: 0; }
+	#map { position: absolute; top: 0; bottom: 0; width: 100%; z-index:0 }
+	#project_info { position: absolute; top: 25%; left: 25%; z-index:999 }
+
+    .map-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 200px;
+        bottom: 100px;
+        left: 10px;
+        padding: 0px;
+    }
+
+    .map-overlay .map-overlay-inner {
+        background-color: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .map-overlay-inner fieldset {
+        border: none;
+        padding: 0;
+        margin: 0 0 10px;
+    }
+
+    .map-overlay-inner fieldset:last-child {
+        margin: 0;
+    }
+
+    .map-overlay-inner select {
+        width: 100%;
+    }
+
+    .map-overlay-inner label {
+        display: block;
+        font-weight: bold;
+        margin: 0 0 5px;
+    }
+
+    .map-overlay-inner button {
+        display: inline-block;
+        width: 36px;
+        height: 20px;
+        border: none;
+        cursor: pointer;
+    }
+
+    .map-overlay-inner button:focus {
+        outline: none;
+    }
+
+    .map-overlay-inner button:hover {
+        box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .mapboxgl-popup {
+        max-width: 400px;
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    }
+
+		#resetmap {
+			width: 30px; height: 30px;
+		}
+
+</style>
+</head>
+<body>
+<div id="header_bar"></div>
+<div id="map"></div>
+<div id="project_info"></div>
+<div id="status_box"></div>
+<div id="filter_control"></div>
+<div class="map-overlay top">
+    <!--<div class="map-overlay-inner">
+        <fieldset>
+            <label>Select layer</label>
+            <select id="layer" name="layer">
+                <option value="water">Water</option>
+                <option value="building">Buildings</option>
+            </select>
+        </fieldset>
+        <fieldset>
+            <label>Choose a color</label>
+            <div id="swatches"></div>
+        </fieldset>
+    </div>-->
+		<input type="image" src="images/replay-icon.png" id="resetmap"  onclick="resetMap()" />
+		<div class="filter_group">
+		Region
+		</div>
+		<div class="filter_group">
+		Topic
+		</div>
+		<div class="filter_group">
+		Status
+		</div>
+		<div class="filter_group">
+		People
+		</div>
+		<div class="filter_group">
+		Organizations
+		</div>
+</div>
+
+<script>
+	var projectsDB = DATA_PROJECT_GEO;
+	processData();
+	
+	function processData() {
+		for (var i = 0; i < projectsDB.features.length; i++) {
+			var p = projectsDB.features[i];
+			
+			for (var j = 0; j < DATA_PROJECTS.length; j++) {
+				// get full project data, replace geojson properties
+				if (DATA_PROJECTS[i].projectid == parseInt(p.properties.projectid)) {
+					p.properties = DATA_PROJECTS[i];
+					
+					var personids = [];
+					var persons = [];
+					// get list of project people ids
+					if (Number.isInteger(p.properties.people)) {
+						personids.push(p.properties.people);
+					} else if (p.properties.people != '') {
+						personids = p.properties.people.split(';');
+					}
+					for (var k = 0; k < personids.length; k++) {
+						// find person
+						var personid = parseInt(personids[k]);
+						
+						for (var l = 0; l < DATA_PEOPLE.length; l++) {
+							if (DATA_PEOPLE[l].personid == personid) {
+								persons.push(DATA_PEOPLE[l]);
+								break;
+							}
+						}
+					}
+					p.properties['peoplelist'] = persons;
+					break;
+				}
+			}
+
+			// add popup html if empty
+			if (!p.properties.popupHTML) {
+				var projectData = p.properties;
+				var statusStr = '';
+				switch (projectData.status) {
+					case 1:
+						statusStr = 'Planning';
+						break;
+					case 2:
+						statusStr = 'Design';
+						break;
+					case 3:
+						statusStr = 'Implementation';
+						break;
+					case 4:
+						statusStr = 'Live';
+						break;
+					case 5:
+						statusStr = 'Archived';
+						break;
+				}
+				var displayHTML = '<strong>' + projectData.name + '</strong><p>' + projectData['desc_text'].substring(0,200) 
+					+ '...</p>';
+				if (statusStr != '' ) displayHTML += '<p><b>Status: ' + statusStr + '</b></p>';
+				projectData['popupHTML'] = displayHTML;									
+			}
+
+		}
+	}
+	
+	function getPerson(id) {
+		for (var i = 0; i < DATA_PEOPLE.length; i++) {
+			if (DATA_PEOPLE[i].personid == id) {
+				return DATA_PEOPLE[i];
+			}
+		}
+		return null;
+	}
+	
+	function getProject(id) {
+		for (var i = 0; i < DATA_PROJECTS.length; i++) {
+			if (DATA_PROJECTS[i].projectjd == id) {
+				return DATA_PROJECTS[i];
+			}
+		}
+		return null;
+	}
+	
+
+	function resetMap() {
+		map.flyTo({
+			center: initCenter,
+			zoom: initZoom,
+			essential: true
+		});
+	}
+
+	var mpp = flHeight / window.innerHeight;
+	//console.log("w=" + window.innerWidth + ", h=" + window.innerHeight + ", mpp=" + mpp);
+	var initZoom;
+	var initCenter = [-83.56, 28.11]; // starting position [lng, lat] 28.113770, -83.560620
+	
+	for (var i = 0; i < mapboxZP20.length; i++) {
+		if (mpp >= mapboxZP20[i]) {
+			break;
+		}
+		initZoom = i;
+	}
+	//console.log("zoom=" + zoom + ", " + mapboxZP20[zoom] + " meters per pixel");
+
+
+	mapboxgl.accessToken = 'pk.eyJ1IjoieWh1YW5nNyIsImEiOiJjazJocjliaWEwdnd6M2hxZ2FnNHM3cDkwIn0.UQxOTkmbQTAv-e9El4zLKQ';
+	var map = new mapboxgl.Map({
+		container: 'map',
+		style: 'mapbox://styles/mapbox/streets-v11',
+		center: initCenter,
+		zoom: initZoom
+	});
+
+	map.addControl(new mapboxgl.NavigationControl());
+
+	var status1 = ['==', ['get', 'status'], 1];
+	var status2 = ['==', ['get', 'status'], 2];
+	var status3 = ['==', ['get', 'status'], 3];
+	var status4 = ['==', ['get', 'status'], 4];
+	var status5 = ['==', ['get', 'status'], 5];
+
+	// colors to use for the categories
+	var colors = STATUS_COLORS;
+
+	map.on('load', function() {
+			// add a clustered GeoJSON source for a sample set of projects
+			map.addSource('projects', {
+					'type': 'geojson',
+					'data':	projectsDB,
+					'cluster': true,
+					'clusterRadius': 30,
+					'clusterProperties': {
+							// keep separate counts for each magnitude category in a cluster
+							'status1': ['+', ['case', status1, 1, 0]],
+							'status2': ['+', ['case', status2, 1, 0]],
+							'status3': ['+', ['case', status3, 1, 0]],
+							'status4': ['+', ['case', status4, 1, 0]],
+							'status5': ['+', ['case', status5, 1, 0]]
+					}
+			});
+			// circle and symbol layers for rendering individual projects (unclustered points)
+			map.addLayer({
+					'id': 'project_circle',
+					'type': 'circle',
+					'source': 'projects',
+					'filter': ['!=', 'cluster', true],
+					'paint': {
+							'circle-color': [
+									'case',
+									status1,
+									colors[0],
+									status2,
+									colors[1],
+									status3,
+									colors[2],
+									status4,
+									colors[3],
+									colors[4]
+							],
+							'circle-opacity': 0.9,
+							'circle-radius': 12
+					}
+			});
+			/*map.addLayer({
+					'id': 'project_label',
+					'type': 'symbol',
+					'source': 'projects',
+					'filter': ['!=', 'cluster', true],
+					'layout': {
+							'text-field': [
+									'number-format',
+									['get', 'status'],
+									{ 'min-fraction-digits': 1, 'max-fraction-digits': 1 }
+							],
+							'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+							'text-size': 10
+					},
+					'paint': {
+							'text-color': [
+									'case',
+									['<', ['get', 'status'], 3],
+									'black',
+									'white'
+							]
+					}
+			});*/
+
+			// objects for caching and keeping track of HTML marker objects (for performance)
+			var markers = {};
+			var markersOnScreen = {};
+
+			function updateMarkers() {
+					var newMarkers = {};
+					var features = map.querySourceFeatures('projects');
+
+					// for every cluster on the screen, create an HTML marker for it (if we didn't yet),
+					// and add it to the map if it's not there already
+					for (var i = 0; i < features.length; i++) {
+							var coords = features[i].geometry.coordinates;
+							var props = features[i].properties;
+														
+							if (!props.cluster) {
+								continue;
+							} else {
+								// update cluster popup html
+							}
+							
+							var id = props.cluster_id;
+
+							var marker = markers[id];
+							if (!marker) {
+									var el = createDonutChart(props);
+									marker = markers[id] = new mapboxgl.Marker({
+											element: el
+									}).setLngLat(coords);
+							}
+							newMarkers[id] = marker;
+
+							if (!markersOnScreen[id]) marker.addTo(map);
+					}
+					// for every marker we've added previously, remove those that are no longer visible
+					for (id in markersOnScreen) {
+							if (!newMarkers[id]) markersOnScreen[id].remove();
+					}
+					markersOnScreen = newMarkers;
+			}
+
+			// after the GeoJSON data is loaded, update markers on the screen and do so on every map move/moveend
+			map.on('data', function(e) {
+					if (e.sourceId !== 'projects' || !e.isSourceLoaded) return;
+
+					map.on('move', updateMarkers);
+					map.on('moveend', updateMarkers);
+					updateMarkers();
+			});
+	});
+
+	// code for creating an SVG donut chart from feature properties
+	function createDonutChart(props) {
+			var offsets = [];
+			var counts = [
+					props.status1,
+					props.status2,
+					props.status3,
+					props.status4,
+					props.status5
+			];
+			var total = 0;
+			for (var i = 0; i < counts.length; i++) {
+					offsets.push(total);
+					total += counts[i];
+			}
+			/*var fontSize =
+					total >= 1000 ? 22 : total >= 100 ? 20 : total >= 10 ? 18 : 16;
+			var r = total >= 1000 ? 50 : total >= 100 ? 32 : total >= 10 ? 24 : 18;*/
+			// customize size based on projects in cluster
+			var fontSize =
+					total >= 15 ? 20 : total >= 10 ? 18 : total >= 5 ? 16 : 14;
+			var r = total >= 15 ? 40 : total >= 10 ? 30 : total >= 5 ? 20 : 15;
+			var r0 = Math.round(r * 0.6);
+			var w = r * 2;
+
+			var html =
+					'<div><svg width="' +
+					w +
+					'" height="' +
+					w +
+					'" viewbox="0 0 ' +
+					w +
+					' ' +
+					w +
+					'" text-anchor="middle" style="font: ' +
+					fontSize +
+					'px sans-serif bold">';
+
+			for (i = 0; i < counts.length; i++) {
+					html += donutSegment(
+							offsets[i] / total,
+							(offsets[i] + counts[i]) / total,
+							r,
+							r0,
+							colors[i]
+					);
+			}
+			html +=
+					'<circle cx="' +
+					r +
+					'" cy="' +
+					r +
+					'" r="' +
+					r0 +
+					'" fill="white" /><text dominant-baseline="central" transform="translate(' +
+					r +
+					', ' +
+					r +
+					')">' +
+					total.toLocaleString() +
+					'</text></svg></div>';
+
+			var el = document.createElement('div');
+			el.innerHTML = html;
+			return el.firstChild;
+	}
+
+	function donutSegment(start, end, r, r0, color) {
+			if (end - start === 1) end -= 0.00001;
+			var a0 = 2 * Math.PI * (start - 0.25);
+			var a1 = 2 * Math.PI * (end - 0.25);
+			var x0 = Math.cos(a0),
+					y0 = Math.sin(a0);
+			var x1 = Math.cos(a1),
+					y1 = Math.sin(a1);
+			var largeArc = end - start > 0.5 ? 1 : 0;
+
+			return [
+					'<path d="M',
+					r + r0 * x0,
+					r + r0 * y0,
+					'L',
+					r + r * x0,
+					r + r * y0,
+					'A',
+					r,
+					r,
+					0,
+					largeArc,
+					1,
+					r + r * x1,
+					r + r * y1,
+					'L',
+					r + r0 * x1,
+					r + r0 * y1,
+					'A',
+					r0,
+					r0,
+					0,
+					largeArc,
+					0,
+					r + r0 * x0,
+					r + r0 * y0,
+					'" fill="' + color + '" />'
+			].join(' ');
+	}
+
+
+	var popup = new mapboxgl.Popup({
+			closeButton: false,
+			closeOnClick: false
+	});
+
+	map.on('mouseenter', 'project_circle', function(e) {
+			// Change the cursor style as a UI indicator.
+			map.getCanvas().style.cursor = 'pointer';
+
+			var coordinates = e.features[0].geometry.coordinates.slice();
+
+			// Ensure that if the map is zoomed out such that multiple
+			// copies of the feature are visible, the popup appears
+			// over the copy being pointed to.
+			while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+					coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+			}
+
+			//var description = e.features[0].properties.description;
+			var popupHTML = e.features[0].properties.popupHTML;
+
+			// Populate the popup and set its coordinates
+			// based on the feature found.
+			popup
+					.setLngLat(coordinates)
+					.setHTML(popupHTML)
+					.addTo(map);
+	});
+
+	map.on('mouseleave', 'project_circle', function() {
+			map.getCanvas().style.cursor = '';
+			popup.remove();
+	});
+	
+	map.on('click', 'project_circle', function(e) {
+			var coordinates = e.features[0].geometry.coordinates.slice();
+			//var description = e.features[0].properties.description;
+
+			// Ensure that if the map is zoomed out such that multiple
+			// copies of the feature are visible, the popup appears
+			// over the copy being pointed to.
+			while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+					coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+			}
+
+			map.flyTo({
+				center: coordinates,
+				zoom: 13,
+				essential: true // this animation is considered essential with respect to prefers-reduced-motion
+			});
+	});
+
+</script>
+
+</body>
+</html>
