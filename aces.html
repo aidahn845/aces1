@@ -80,25 +80,14 @@
 </style>
 </head>
 <body>
-<div id="header_bar"></div>
+<div id="header_bar">Florida Connected Vehicle Initiative</div>
+
 <div id="map"></div>
 <div id="project_info"></div>
 <div id="status_box"></div>
 <div id="filter_control"></div>
 <div class="map-overlay top">
-    <!--<div class="map-overlay-inner">
-        <fieldset>
-            <label>Select layer</label>
-            <select id="layer" name="layer">
-                <option value="water">Water</option>
-                <option value="building">Buildings</option>
-            </select>
-        </fieldset>
-        <fieldset>
-            <label>Choose a color</label>
-            <div id="swatches"></div>
-        </fieldset>
-    </div>-->
+
 		<input type="image" src="images/replay-icon.png" id="resetmap"  onclick="resetMap()" />
 		<div class="filter_group">
 		Region
@@ -249,8 +238,8 @@
 			map.addSource('projects', {
 					'type': 'geojson',
 					'data':	projectsDB,
-					'cluster': true,
-					'clusterRadius': 30,
+					'cluster': false,
+					'clusterRadius': 30,  // research best setting for this in fl
 					'clusterProperties': {
 							// keep separate counts for each magnitude category in a cluster
 							'status1': ['+', ['case', status1, 1, 0]],
