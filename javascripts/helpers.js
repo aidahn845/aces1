@@ -9,4 +9,4 @@ const STATUS_IMPLEMENT = 3;
 const STATUS_LIVE = 4;
 const STATUS_ARCHIVE = 5;
 
-const STATUS_COLORS = ['#9A00F0', '#FFD417', '#7373ff', '#00FFA8', '#a3a3a3'];
+const STATUS_COLORS = ['#9A00F0', '#FFD417', '#7373ff', '#00DC13', '#a3a3a3'];

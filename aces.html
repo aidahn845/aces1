@@ -19,7 +19,7 @@
         font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
         position: absolute;
         width: 200px;
-        bottom: 100px;
+        bottom: 40px;
         left: 10px;
         padding: 0px;
     }
@@ -80,7 +80,7 @@
 </style>
 </head>
 <body>
-<div id="header_bar">Florida Connected Vehicle Initiative</div>
+<div id="header_bar"></div>
 
 <div id="map"></div>
 <div id="project_info"></div>
@@ -90,23 +90,30 @@
 
 		<input type="image" src="images/replay-icon.png" id="resetmap"  onclick="resetMap()" />
 		<div class="filter_group">
-		Region
+		
 		</div>
 		<div class="filter_group">
-		Topic
+		
 		</div>
 		<div class="filter_group">
-		Status
+		
 		</div>
 		<div class="filter_group">
-		People
+		
 		</div>
 		<div class="filter_group">
-		Organizations
+		
 		</div>
 </div>
 
 <script>
+
+var bCluster = true;
+var urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('cluster') && urlParams.get('cluster').toLowerCase() == 'false')
+	bCluster = false;
+
+
 	var projectsDB = DATA_PROJECT_GEO;
 	processData();
 	
@@ -217,7 +224,7 @@
 	mapboxgl.accessToken = 'pk.eyJ1IjoieWh1YW5nNyIsImEiOiJjazJocjliaWEwdnd6M2hxZ2FnNHM3cDkwIn0.UQxOTkmbQTAv-e9El4zLKQ';
 	var map = new mapboxgl.Map({
 		container: 'map',
-		style: 'mapbox://styles/mapbox/streets-v11',
+		style: 'mapbox://styles/mapbox/streets-v11', // streets v11, light/dark v11, satellite v9
 		center: initCenter,
 		zoom: initZoom
 	});
@@ -238,8 +245,8 @@
 			map.addSource('projects', {
 					'type': 'geojson',
 					'data':	projectsDB,
-					'cluster': false,
-					'clusterRadius': 30,  // research best setting for this in fl
+					'cluster': bCluster,
+					'clusterRadius': 40,
 					'clusterProperties': {
 							// keep separate counts for each magnitude category in a cluster
 							'status1': ['+', ['case', status1, 1, 0]],
@@ -269,7 +276,9 @@
 									colors[4]
 							],
 							'circle-opacity': 0.9,
-							'circle-radius': 12
+							'circle-radius': 12,
+							'circle-stroke-width': 1,
+							'circle-stroke-color': 'white'
 					}
 			});
 			/*map.addLayer({
@@ -365,12 +374,15 @@
 					total >= 1000 ? 22 : total >= 100 ? 20 : total >= 10 ? 18 : 16;
 			var r = total >= 1000 ? 50 : total >= 100 ? 32 : total >= 10 ? 24 : 18;*/
 			// customize size based on projects in cluster
+			
+			var wStroke = 2;
 			var fontSize =
-					total >= 15 ? 20 : total >= 10 ? 18 : total >= 5 ? 16 : 14;
-			var r = total >= 15 ? 40 : total >= 10 ? 30 : total >= 5 ? 20 : 15;
+					total >= 15 ? 22 : total >= 10 ? 20 : total >= 5 ? 17 : 14;
+			var r = total >= 15 ? 35 : total >= 10 ? 30 : total >= 5 ? 25 : 20;
+			r += wStroke;
 			var r0 = Math.round(r * 0.6);
-			var w = r * 2;
-
+			var w = r * 2 + wStroke * 2;
+			
 			var html =
 					'<div><svg width="' +
 					w +
@@ -383,6 +395,9 @@
 					'" text-anchor="middle" style="font: ' +
 					fontSize +
 					'px sans-serif bold">';
+			
+			// base circle to create stroke
+			//html += '<circle />';
 
 			for (i = 0; i < counts.length; i++) {
 					html += donutSegment(
@@ -449,7 +464,7 @@
 					0,
 					r + r0 * x0,
 					r + r0 * y0,
-					'" fill="' + color + '" />'
+					'" fill="' + color + '" stroke="white" stroke-width="1" />'
 			].join(' ');
 	}
 
